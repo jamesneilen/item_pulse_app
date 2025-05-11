@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "882036514451",
+    "project_id": "itempulse-e177c",
+    "storage_bucket": "itempulse-e177c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882036514451:android:2d00ceb3097555b82f7766",
+        "android_client_info": {
+          "package_name": "com.example.item_pulse_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6_rficoX0sVwg1-kCqcRs7y_Ul8VjpK4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
