@@ -53,7 +53,7 @@ android/.gradle/
 android/local.properties
 
 # Firebase/Secrets
-lib/irebase_options.dart
+/lib/irebase_options.dart
 **/google-services.json
 firebase.json
 **/GoogleService-Info.plist
