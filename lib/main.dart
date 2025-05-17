@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:item_pulse_app/core/themes.dart';
+import 'package:item_pulse_app/views/auth/login_screen.dart';
+import 'package:item_pulse_app/views/auth/signup_screen.dart';
+import 'package:item_pulse_app/views/auth/welcome_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,25 +15,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(),
+      debugShowCheckedModeBanner: false,
+      title: 'ItemPulse',
+      theme: myTheme,
+      home: const SignupScreen(),
     );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold();
   }
 }
