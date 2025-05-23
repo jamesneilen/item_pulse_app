@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:item_pulse_app/core/themes.dart';
 import 'package:item_pulse_app/widgets/custom_button.dart';
+import 'package:provider/provider.dart';
 
+import '../../services/auth_service.dart';
 import '../../widgets/custom_input_field.dart';
+import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,29 +16,38 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String _email = '';
+  String _password = '';
 
-  void _login() {
-    if (_formKey.currentState!.validate()) {
+  void _login() async {
+    if (_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+    setState(() => _isLoading = true);
+    try {
+      await context.read<AuthService>().signInWithEmail(_email, _password);
       Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  Widget _fieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-          fontFamily: 'Inter',
-        ),
-      ),
-    );
+  void _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      await context.read<AuthService>().signInWithGoogle();
+      Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -63,26 +75,35 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 SizedBox(height: 30),
-                _fieldLabel('Email'),
-                myTextfield(
-                  _emailController,
-                  TextInputType.emailAddress,
-                  (value) =>
-                      value!.contains('@') ? null : 'Enter a valid email',
-                  false,
+                fieldLabel('Email'),
+                MTextfield(
+                  keyboardType: TextInputType.emailAddress,
+
+                  ///validator
+                  validator:
+                      (value) =>
+                          value == null || !value.contains('@')
+                              ? 'Enter a valid email'
+                              : null,
+
+                  onSaved: (value) => _email = value!.trim(),
                 ),
 
                 const SizedBox(height: 30),
-                _fieldLabel('Password'),
-                myTextfield(
-                  _passwordController,
-                  TextInputType.text,
-                  (value) =>
-                      value!.length >= 6 ? null : 'Minimum of 6 characters',
-                  true,
+                fieldLabel('Password'),
+                MTextfield(
+                  keyboardType: TextInputType.text,
+                  validator:
+                      (value) =>
+                          value == null || value.length < 6
+                              ? 'Password too short'
+                              : null,
+                  onSaved: (value) => _password = value!,
+                  onChanged: (p0) => setState(() => _password = p0!),
+                  obscureText: true,
                 ),
                 const SizedBox(height: 60),
-                Center(child: MyButton(text: 'Login', onPressed: () {})),
+                Center(child: MyButton(text: 'Login', onPressed: _login)),
                 Center(
                   child: TextButton(
                     onPressed: () {},
@@ -96,10 +117,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 Center(
                   child: TextButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/signup');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => SignupScreen()),
+                      );
                     },
                     child: const Text('Don\'t have an account? Sign up'),
                   ),
+                ),
+                const Divider(color: Colors.black, height: 32, thickness: 1),
+                ElevatedButton.icon(
+                  onPressed: _signInWithGoogle,
+                  label: Text('Sign in with Google'),
+                  icon: const Icon(Icons.g_mobiledata),
                 ),
               ],
             ),
