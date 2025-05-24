@@ -51,6 +51,7 @@ build/
 ios/Pods/
 android/.gradle/
 android/local.properties
+android/app/src/main/AndroidManifest.xml
 
 # Firebase/Secrets
 /lib/firebase_options.dart
