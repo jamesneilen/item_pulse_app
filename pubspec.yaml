@@ -49,6 +49,9 @@ dependencies:
   geolocator: ^14.0.0
   firebase_auth: ^5.5.4
   google_sign_in: ^6.3.0
+  flutter_image_compress: ^2.4.0
+  path_provider: ^2.1.5
+  intl: ^0.20.2
   
   # ar_flutter_plugin:
   #   path: lib_plugins/ar_flutter_plugin

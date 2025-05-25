@@ -5,6 +5,7 @@ import 'package:item_pulse_app/views/dashboard/widgets/goog_maps.dart';
 import 'package:provider/provider.dart';
 
 import '../../ar/ar_scan_screen.dart';
+import '../../items/item_list_screen.dart';
 import '../../providers/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -212,7 +213,12 @@ class _HomeScreenState extends State<HomeScreen> {
         subtitle: const Text("Tap to view or manage"),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
-          // Navigate to My Items
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const RegisteredItemsScreen(),
+            ),
+          );
         },
       ),
     );

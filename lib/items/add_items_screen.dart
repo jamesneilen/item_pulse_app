@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:item_pulse_app/core/themes.dart';
@@ -8,14 +9,14 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
+import 'package:item_pulse_app/widgets/compress_image.dart';
+import 'package:uuid/uuid.dart';
 import '../widgets/custom_button.dart';
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _AddItemScreenState createState() => _AddItemScreenState();
 }
 
@@ -36,7 +37,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   Future<void> _pickImage() async {
     showModalBottomSheet(
-      backgroundColor: Colors.transparent,
+      backgroundColor: myTheme.primaryColor,
       isScrollControlled: true,
       context: context,
       shape: const RoundedRectangleBorder(
@@ -105,19 +106,33 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final userId =
-          "test_user_123"; // Replace with FirebaseAuth UID if using auth
+      final user = FirebaseAuth.instance.currentUser;
 
-      // 🔼 Upload the image to Firebase Storage
+      final userId = user?.uid;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not authenticated.')),
+        );
+        return;
+      }
+
+      // Compress the image
+      final compressedXFile = await compressImage(XFile(_imageFile!.path));
+      final compressedFile = File(compressedXFile.path);
+      print('Compressed file path: ${compressedFile.path}');
+      print('File exists: ${await compressedFile.path}');
+
+      // Upload the image to Firebase Storage
+      final uuid = const Uuid().v4();
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('item_images')
-          .child('item_$timestamp.jpg');
+          .child('item_${timestamp}_$uuid.jpg');
 
-      final uploadTask = await storageRef.putFile(_imageFile!);
+      await storageRef.putFile(compressedFile);
       final imageUrl = await storageRef.getDownloadURL();
-
-      // 🧾 Save item data to Firestore
+      print('Image uploaded: $imageUrl');
+      // Save item data to Firestore
       await FirebaseFirestore.instance.collection('items').add({
         'title': _title,
         'category': _category,
