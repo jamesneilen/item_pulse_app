@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:item_pulse_app/core/themes.dart';
+import 'package:item_pulse_app/views/dashboard/home_screen.dart';
+// import 'package:item_pulse_app/core/themes.dart';
 import 'package:item_pulse_app/widgets/custom_button.dart';
 import 'package:provider/provider.dart';
 
@@ -21,12 +22,15 @@ class _LoginScreenState extends State<LoginScreen> {
   String _password = '';
 
   void _login() async {
-    if (_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
     setState(() => _isLoading = true);
     try {
       await context.read<AuthService>().signInWithEmail(_email, _password);
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
@@ -40,7 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await context.read<AuthService>().signInWithGoogle();
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
     } catch (e) {
       ScaffoldMessenger.of(
         context,

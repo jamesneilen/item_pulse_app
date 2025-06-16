@@ -1,43 +1,44 @@
-class ItemModel {
-  final String id;
-  final String name;
-  final String category;
-  final String description;
-  final String imageUrl;
-  final double? latitude;
-  final double? longitude;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-  ItemModel({
+class Item {
+  final String id;
+  final String title;
+  final String description;
+  final String? imageUrl;
+  final String category;
+  final Timestamp timestamp;
+  final String userId;
+
+  Item({
     required this.id,
-    required this.name,
-    required this.category,
+    required this.title,
     required this.description,
-    required this.imageUrl,
-    this.latitude,
-    this.longitude,
+    this.imageUrl,
+    required this.category,
+    required this.timestamp,
+    required this.userId,
   });
 
+  factory Item.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Item(
+      id: doc.id,
+      title: data['title'] ?? 'No Title',
+      description: data['description'] ?? 'No Description',
+      imageUrl: data['imageUrl'],
+      category: data['category'] ?? 'Uncategorized',
+      timestamp: data['timestamp'] ?? Timestamp.now(), // Provide a default
+      userId: data['userId'] ?? '',
+    );
+  }
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
-      'name': name,
-      'category': category,
+      'userId': userId,
+      'title': title,
       'description': description,
       'imageUrl': imageUrl,
-      'latitude': latitude,
-      'longitude': longitude,
+      'category': category,
+      'timestamp': timestamp,
     };
-  }
-
-  factory ItemModel.fromMap(Map<String, dynamic> map) {
-    return ItemModel(
-      id: map['id'],
-      name: map['name'],
-      category: map['category'],
-      description: map['description'],
-      imageUrl: map['imageUrl'],
-      latitude: map['latitude'],
-      longitude: map['longitude'],
-    );
   }
 }
