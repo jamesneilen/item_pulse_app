@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,11 @@ import 'package:item_pulse_app/items/add_items_screen.dart';
 import 'package:item_pulse_app/items/item_list_screen.dart'; // Make sure this is the correct path for RegisteredItemsScreen
 import 'package:item_pulse_app/providers/auth_provider.dart';
 import 'package:item_pulse_app/views/dashboard/widgets/goog_maps.dart';
+
+import '../../ar/ar_scan_screen.dart';
+import '../../models/item_model.dart';
+import '../../profile/profile_screen.dart';
+import '../../providers/user_provider.dart';
 
 // Dummy screens for the bottom nav bar
 class SearchScreen extends StatelessWidget {
@@ -21,13 +27,6 @@ class CommunityScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: Text("Community Screen")));
-}
-
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text("Profile Screen")));
 }
 
 class HomeScreen extends StatefulWidget {
@@ -198,8 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
 class _DashboardView extends StatelessWidget {
   const _DashboardView();
 
-  @override
   Widget build(BuildContext context) {
+    final uid = Provider.of<UserProvider>(context, listen: false).user?.uid;
+
     return Column(
       children: [
         // Big Map Section
@@ -209,7 +209,41 @@ class _DashboardView extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: const MyMap(),
+              // Use a StreamBuilder to get live updates of item locations
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('items')
+                        .where('userId', isEqualTo: uid)
+                        .where(
+                          'status',
+                          whereIn: ['lost', 'found'],
+                        ) // Only show lost or found items
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final items =
+                      snapshot.data!.docs
+                          .map(
+                            (doc) => Item.fromFirestore(
+                              doc as DocumentSnapshot<Map<String, dynamic>>,
+                            ),
+                          )
+                          .toList();
+
+                  // Pass the fetched items to our new dynamic map!
+                  return MyMap(
+                    items: items,
+                    onMarkerTapped: (item) {
+                      // When a marker is tapped, you could show a bottom sheet with details
+                      print('Tapped on map marker for: ${item.title}');
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ),

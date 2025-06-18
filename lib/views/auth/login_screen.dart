@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:item_pulse_app/views/dashboard/home_screen.dart';
-// import 'package:item_pulse_app/core/themes.dart';
-import 'package:item_pulse_app/widgets/custom_button.dart';
+import 'package:item_pulse_app/widgets/custom_input_field.dart';
 import 'package:provider/provider.dart';
 
+// Your app's imports
 import '../../services/auth_service.dart';
-import '../../widgets/custom_input_field.dart';
+import '../../widgets/custom_button.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,132 +16,221 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
-  String _email = '';
-  String _password = '';
 
-  void _login() async {
+  // --- OPTIMIZATION 1: Use TextEditingControllers ---
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+  bool _isPasswordVisible = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
+
     setState(() => _isLoading = true);
     try {
-      await context.read<AuthService>().signInWithEmail(_email, _password);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      await context.read<AuthService>().signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
+
+      // --- OPTIMIZATION 2: Removed explicit navigation ---
+      // Navigation should be handled by a root-level StreamBuilder listening to authStateChanges.
+      // This makes the app's navigation flow much more robust.
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _signInWithGoogle() async {
+  Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
       await context.read<AuthService>().signInWithGoogle();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      // Navigation is handled by the root auth listener.
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // --- OPTIMIZATION 3: Use Theme for consistent styling ---
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 30),
-                Center(
-                  child: Text(
-                    "Log In",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontFamily: 'Inter',
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SafeArea(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 60),
+                          Text(
+                            "Welcome Back!",
+                            textAlign: TextAlign.center,
+                            style: textTheme.headlineLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Log in to continue your journey.",
+                            textAlign: TextAlign.center,
+                            style: textTheme.titleMedium?.copyWith(
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(height: 50),
+
+                          // --- Email Field ---
+                          MTextfield(
+                            // <-- Using your optimized widget
+                            controller: _emailController,
+                            labelText: 'Email Address',
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty)
+                                return 'Please enter an email';
+                              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                              if (!emailRegex.hasMatch(value))
+                                return 'Enter a valid email address';
+                              return null;
+                            },
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 20),
+
+                          // --- Password Field ---
+                          MTextfield(
+                            controller: _passwordController,
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            obscureText: !_isPasswordVisible,
+                            validator:
+                                (value) =>
+                                    value!.length < 6
+                                        ? 'Password must be at least 6 characters'
+                                        : null,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                              ),
+                              onPressed:
+                                  () => setState(
+                                    () =>
+                                        _isPasswordVisible =
+                                            !_isPasswordVisible,
+                                  ),
+                            ),
+                            onFieldSubmitted: (_) => _login(),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () {
+                                /* TODO: Implement Forgot Password */
+                              },
+                              child: const Text('Forgot Password?'),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // --- Login Button ---
+                          MyButton(text: 'Login', onPressed: _login),
+                          const SizedBox(height: 20),
+
+                          // --- Third-Party Login ---
+                          Row(
+                            children: [
+                              const Expanded(child: Divider()),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
+                                child: Text('OR', style: textTheme.bodySmall),
+                              ),
+                              const Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+
+                          ElevatedButton.icon(
+                            onPressed: _signInWithGoogle,
+                            icon: const Icon(Icons.g_mobiledata),
+                            label: const Text('Continue with Google'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black87,
+                              elevation: 1,
+                              side: BorderSide(
+                                color: colorScheme.outline.withOpacity(0.5),
+                              ),
+                            ),
+                          ),
+
+                          // --- Navigate to Sign Up ---
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text("Don't have an account?"),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SignupScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Sign Up'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                SizedBox(height: 30),
-                fieldLabel('Email'),
-                MTextfield(
-                  keyboardType: TextInputType.emailAddress,
-
-                  ///validator
-                  validator:
-                      (value) =>
-                          value == null || !value.contains('@')
-                              ? 'Enter a valid email'
-                              : null,
-
-                  onSaved: (value) => _email = value!.trim(),
-                ),
-
-                const SizedBox(height: 30),
-                fieldLabel('Password'),
-                MTextfield(
-                  keyboardType: TextInputType.text,
-                  validator:
-                      (value) =>
-                          value == null || value.length < 6
-                              ? 'Password too short'
-                              : null,
-                  onSaved: (value) => _password = value!,
-                  onChanged: (p0) => setState(() => _password = p0!),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 60),
-                Center(child: MyButton(text: 'Login', onPressed: _login)),
-                Center(
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(fontSize: 20, fontFamily: 'Inter'),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Center(
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => SignupScreen()),
-                      );
-                    },
-                    child: const Text('Don\'t have an account? Sign up'),
-                  ),
-                ),
-                const Divider(color: Colors.black, height: 32, thickness: 1),
-                ElevatedButton.icon(
-                  onPressed: _signInWithGoogle,
-                  label: Text('Sign in with Google'),
-                  icon: const Icon(Icons.g_mobiledata),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
     );
   }
 }

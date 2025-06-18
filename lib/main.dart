@@ -11,8 +11,11 @@ import 'package:item_pulse_app/views/onboarding/splash_screen.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/item_provider.dart';
+import 'providers/user_provider.dart';
 import 'services/auth_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+
+import 'views/auth/auth_gate.dart';
 // import 'views/auth/auth_gate.dart';
 // import 'views/dashboard/home_screen.dart';
 
@@ -53,7 +56,7 @@ class MyApp extends StatelessWidget {
       theme: myTheme,
       darkTheme: myDarkTheme,
       themeMode: ThemeMode.system, // Use system theme mode
-      home: SplashScreen(),
+      home: AuthWrapper(),
     );
   }
 }

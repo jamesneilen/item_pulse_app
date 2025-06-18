@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ionicons/ionicons.dart';
 import 'package:item_pulse_app/items/add_items_screen.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../ar/ar_scan_screen.dart';
 import '../models/item_model.dart';
+import '../views/bluetooth/pairing_screen.dart';
 import 'item_detail_screen.dart';
 
 class RegisteredItemsScreen extends StatefulWidget {
@@ -210,8 +213,12 @@ class _RegisteredItemsScreenState extends State<RegisteredItemsScreen> {
   }
 
   /// Builds the interactive card for a single item.
+  /// Builds the interactive card for a single item.
   Widget _buildItemCard(Item item) {
-    // UX Improvement 4: Interactive Card
+    // Check if the item is trackable
+    final bool isTrackable =
+        item.bluetoothDeviceId != null && item.bluetoothDeviceId!.isNotEmpty;
+
     return Dismissible(
       key: Key(item.id),
       direction: DismissDirection.endToStart,
@@ -226,20 +233,25 @@ class _RegisteredItemsScreenState extends State<RegisteredItemsScreen> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       child: Card(
+        // The CardTheme from your main theme will style this automatically
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: InkWell(
+          borderRadius: BorderRadius.circular(12.0),
           onTap: () {
-            // Placeholder: Navigate to a detailed view of the item
-            print('Tapped on item: ${item.title}');
+            // Tapping the main card navigates to the detail screen
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => ItemDetailScreen(item: item),
               ),
             );
           },
-          borderRadius: BorderRadius.circular(12.0),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.fromLTRB(
+              12,
+              12,
+              8,
+              12,
+            ), // Adjusted padding for the button
             child: Row(
               children: [
                 ClipRRect(
@@ -280,26 +292,66 @@ class _RegisteredItemsScreenState extends State<RegisteredItemsScreen> {
                         item.description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.black54),
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      // UX Improvement 6: Relative Timestamp
                       Text(
                         timeago.format(item.timestamp.toDate()),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: Colors.grey),
-                  onPressed: () {
-                    // Placeholder: Navigate to the edit screen
-                    print('Edit item: ${item.title}');
-                  },
+                const SizedBox(width: 8),
+
+                // --- THE NEW CONDITIONAL BUTTON ---
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isTrackable)
+                      IconButton(
+                        icon: const Icon(Ionicons.search_circle),
+                        color: Theme.of(context).colorScheme.primary,
+                        iconSize: 36,
+                        tooltip: 'Find this item',
+                        onPressed: () {
+                          // We have the specific 'item' here, so we can navigate correctly.
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => FindItemScreen(itemToFind: item),
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      IconButton(
+                        icon: const Icon(Ionicons.bluetooth_outline),
+                        color: Colors.grey,
+                        iconSize: 36,
+                        tooltip: 'Pair a tracking tag',
+                        onPressed: () {
+                          // TODO: Navigate to a screen to pair a bluetooth tag
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Pairing flow for "${item.title}" to be implemented.',
+                              ),
+                            ),
+                          );
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => PairingScreen(itemToPair: item),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
                 ),
               ],
             ),

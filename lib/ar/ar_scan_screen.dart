@@ -1,103 +1,180 @@
-// import 'package:ar_flutter_plugin/datatypes/config_planedetection.dart';
-// import 'package:ar_flutter_plugin/datatypes/node_types.dart' show NodeType;
-// import 'package:ar_flutter_plugin/managers/ar_anchor_manager.dart';
-// import 'package:ar_flutter_plugin/managers/ar_location_manager.dart';
-// import 'package:ar_flutter_plugin/managers/ar_object_manager.dart';
-// import 'package:ar_flutter_plugin/managers/ar_session_manager.dart';
-// import 'package:flutter/material.dart';
-// import 'package:ar_flutter_plugin/ar_flutter_plugin.dart';
-// import 'package:ar_flutter_plugin/models/ar_node.dart';
-// import 'package:vector_math/vector_math_64.dart' as vector;
+// lib/screens/find_item_screen.dart
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-// class ARScanScreen extends StatefulWidget {
-//   const ARScanScreen({super.key});
+// Import your AR and ML screens/widgets here later
+// import 'ar_scanner_view.dart';
 
-//   @override
-//   State<ARScanScreen> createState() => _ARScanScreenState();
-// }
+import '../models/item_model.dart';
 
-// class _ARScanScreenState extends State<ARScanScreen> {
-//   late ARSessionManager _arSessionManager;
-//   late ARObjectManager _arObjectManager;
+class FindItemScreen extends StatefulWidget {
+  final Item itemToFind;
+  const FindItemScreen({super.key, required this.itemToFind});
 
-//   bool _isReady = false;
+  @override
+  State<FindItemScreen> createState() => _FindItemScreenState();
+}
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: const Text("AR Item Scanner")),
-//       body: Stack(
-//         children: [
-//           ARView(
-//             onARViewCreated: _onARViewCreated,
-//             planeDetectionConfig: PlaneDetectionConfig.horizontal,
-//           ),
-//           if (_isReady)
-//             Positioned(
-//               bottom: 20,
-//               left: 20,
-//               right: 20,
-//               child: ElevatedButton.icon(
-//                 icon: const Icon(Icons.ads_click),
-//                 label: const Text("Scan and Show Item"),
-//                 onPressed: _placeARObject,
-//               ),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
+class _FindItemScreenState extends State<FindItemScreen> {
+  // Phase 1: Map State
+  final LatLng _lastSeenLocation = const LatLng(
+    37.422,
+    -122.084,
+  ); // Placeholder
 
-//   void _onARViewCreated(
-//     ARSessionManager arSessionManager,
-//     ARObjectManager arObjectManager,
-//     ARAnchorManager arAnchorManager,
-//     ARLocationManager arLocationManager,
-//   ) {
-//     _arSessionManager = arSessionManager;
-//     _arObjectManager = arObjectManager;
+  // Phase 2: Bluetooth State
+  BluetoothDevice? _targetDevice;
+  StreamSubscription<List<ScanResult>>? _scanSubscription;
+  int _rssi = -100; // Signal strength, from weak (-100) to strong (0)
 
-//     _arSessionManager.onInitialize(
-//       showFeaturePoints: false,
-//       showPlanes: true,
-//       showWorldOrigin: false,
-//     );
+  // Phase 3: AR State
+  bool _isCloseEnoughForAR = false;
 
-//     _arObjectManager.onInitialize();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.itemToFind.bluetoothDeviceId != null) {
+      _startBluetoothScan();
+    }
+  }
 
-//     setState(() {
-//       _isReady = true;
-//     });
-//   }
+  void _startBluetoothScan() {
+    _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+      for (ScanResult r in results) {
+        // Find our target device by its ID
+        if (r.device.remoteId.toString() ==
+            widget.itemToFind.bluetoothDeviceId) {
+          if (mounted) {
+            setState(() {
+              _targetDevice = r.device;
+              _rssi = r.rssi;
+              // If signal is strong enough, enable AR mode
+              if (r.rssi > -50) {
+                // Threshold for being "very close"
+                _isCloseEnoughForAR = true;
+              } else {
+                _isCloseEnoughForAR = false;
+              }
+            });
+          }
+        }
+      }
+    });
 
-//   Future<void> _placeARObject() async {
-//     try {
-//       final node = ARNode(
-//         type: NodeType.localGLTF2,
-//         uri: "assets/models/box_model/scene.gltf", // Path must match your asset
-//         scale: vector.Vector3(0.2, 0.2, 0.2),
-//         position: vector.Vector3(0.0, 0.0, -1.0), // 1 meter in front
-//         rotation: vector.Vector4(0.0, 1.0, 0.0, 0.0),
-//       );
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 30));
+  }
 
-//       final success = await _arObjectManager.addNode(node);
-//       if (!success!) {
-//         _showSnackbar("❌ Failed to place item in AR space.");
-//       }
-//     } catch (e) {
-//       _showSnackbar("Error: ${e.toString()}");
-//     }
-//   }
+  @override
+  void dispose() {
+    FlutterBluePlus.stopScan();
+    _scanSubscription?.cancel();
+    super.dispose();
+  }
 
-//   void _showSnackbar(String message) {
-//     ScaffoldMessenger.of(
-//       context,
-//     ).showSnackBar(SnackBar(content: Text(message)));
-//   }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Finding: ${widget.itemToFind.title}")),
+      body: Stack(
+        children: [
+          // --- Phase 1: The Map View (always in the background) ---
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _lastSeenLocation,
+              zoom: 18,
+            ),
+            markers: {
+              Marker(
+                markerId: MarkerId(widget.itemToFind.id),
+                position: _lastSeenLocation,
+                infoWindow: InfoWindow(title: 'Last Seen Here'),
+              ),
+            },
+          ),
 
-//   @override
-//   void dispose() {
-//     _arSessionManager.dispose();
-//     super.dispose();
-//   }
-// }
+          // --- Phase 2: The Bluetooth "Hot/Cold" Finder UI ---
+          // This UI overlays the map
+          if (!_isCloseEnoughForAR) _buildBluetoothFinderUI(),
+
+          // --- Phase 3: The AR View ---
+          // This view will replace the Bluetooth UI when close enough
+          if (_isCloseEnoughForAR)
+            _buildARScannerView(), // This would be your AR/ML widget
+        ],
+      ),
+    );
+  }
+
+  // --- UI Widget for Phase 2 ---
+  Widget _buildBluetoothFinderUI() {
+    // Convert RSSI to a 0.0 to 1.0 scale
+    double signalStrength = ((_rssi + 100).clamp(0, 100) / 100.0);
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Card(
+        margin: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _targetDevice == null ? "Searching..." : "Getting Closer...",
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 20),
+              LinearProgressIndicator(
+                value: signalStrength,
+                minHeight: 20,
+                backgroundColor: Colors.grey[300],
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Color.lerp(Colors.red, Colors.green, signalStrength)!,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Signal Strength: $_rssi dBm',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              if (_targetDevice == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16.0),
+                  child: Text(
+                    "Make sure the item's tag is powered on and you're within range.",
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- UI Widget for Phase 3 (Placeholder) ---
+  Widget _buildARScannerView() {
+    // In a real app, this would return your AR widget.
+    // return ARScannerView(itemToFind: widget.itemToFind);
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        color: Colors.black.withOpacity(0.8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.camera, color: Colors.white, size: 60),
+            const SizedBox(height: 20),
+            Text(
+              "You're very close! \nPoint your camera around to find the '${widget.itemToFind.title}'.",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
